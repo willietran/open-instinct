@@ -16,6 +16,9 @@ export interface GatewayOptions {
   /** Without a provisioner the gateway only relays; signup is disabled. */
   inkbox?: InkboxProvisioner;
   inkboxBaseUrl?: string;
+  /** Existing webhook key imported only for this handle when identity reuse is enabled. */
+  inkboxAgentHandle?: string;
+  inkboxSigningKey?: string;
   maritime: MaritimeProvisionOptions;
   signupSecret?: string;
   anthropicApiKey?: string;
@@ -140,6 +143,9 @@ function wantsJson(req: IncomingMessage): boolean {
 }
 
 export function createGateway(opts: GatewayOptions): GatewayServer {
+  if (opts.inkbox && opts.reuseIdentities && !opts.signupSecret) {
+    throw new Error("GATEWAY_REUSE_IDENTITIES requires GATEWAY_SIGNUP_SECRET. Keep the invite code private to the identity owner.");
+  }
   const log = opts.logger ?? consoleLogger;
   const now = opts.now ?? Date.now;
   const dedupe = new EventDeduper(5000);
@@ -208,6 +214,8 @@ export function createGateway(opts: GatewayOptions): GatewayServer {
     provisionUser(user, {
       inkbox: opts.inkbox,
       inkboxBaseUrl: opts.inkboxBaseUrl,
+      inkboxAgentHandle: opts.inkboxAgentHandle,
+      inkboxSigningKey: opts.inkboxSigningKey,
       maritime: opts.maritime,
       publicUrl: opts.publicUrl,
       store: opts.store,

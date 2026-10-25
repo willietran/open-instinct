@@ -145,6 +145,19 @@ describe("modelSpecFor", () => {
 });
 
 describe("buildCreateBody", () => {
+  it("omits the previous endpoint's limits when selecting the Maritime LLM", () => {
+    const body = buildCreateBody({
+      image: "ghcr.io/me/open-instinct-agent:latest", idleSeconds: 900, desktop: true, maritimeLlm: true,
+      config: { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } },
+      env: { OPENAI_API_KEY: "k", OPENAI_BASE_URL: "https://old-model.example/v1", INSTINCT_CONTEXT_WINDOW: "1048576", INSTINCT_MAX_TOKENS: "131072" },
+    });
+    const keys = body.initialEnvVars.map((v) => v.key);
+    expect(keys).not.toContain("OPENAI_API_KEY");
+    expect(keys).not.toContain("OPENAI_BASE_URL");
+    expect(keys).not.toContain("INSTINCT_CONTEXT_WINDOW");
+    expect(keys).not.toContain("INSTINCT_MAX_TOKENS");
+  });
+
   it("carries the OpenAI-compatible endpoint and its declared limits into the VM", () => {
     const config = { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } };
     const body = buildCreateBody({

@@ -168,6 +168,51 @@ describe("provisionUser", () => {
     expect(byKey["INSTINCT_MAX_TOKENS"]?.value).toBe("131072");
   });
 
+  it("omits a previous model endpoint and its limits when selecting the Maritime LLM", () => {
+    const env = agentEnvFor(readyUser(), {
+      openaiApiKey: "test_key", openaiBaseUrl: "https://old-model.example/v1",
+      model: "openai-compatible/old-model", contextWindow: "1048576", maxTokens: "131072",
+      maritime: { apiKey: "k", agentImage: "img", useMaritimeLlm: true },
+    });
+    const keys = env.map((e) => e.key);
+    expect(keys).not.toContain("OPENAI_API_KEY");
+    expect(keys).not.toContain("OPENAI_BASE_URL");
+    expect(keys).not.toContain("INSTINCT_CONTEXT_WINDOW");
+    expect(keys).not.toContain("INSTINCT_MAX_TOKENS");
+    expect(env.find((e) => e.key === "INSTINCT_MODEL")?.value).toBe(`openai-compatible/${DEFAULT_MARITIME_LLM_MODEL}`);
+  });
+
+  it.each(["maria", "another-handle", undefined])("imports an existing signing key only for its matching handle (%s)", async (keyHandle) => {
+    const d = deps();
+    const calls: string[] = [];
+    const inkbox = new InkboxProvisioner({ adminApiKey: "test_admin", baseUrl: "https://inkbox.example", fetchImpl: async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      const method = init?.method ?? "GET";
+      calls.push(`${method} ${path}`);
+      let value: unknown;
+      if (method === "GET" && path === "/api/v1/identities/maria") value = { id: "existing_identity", agent_handle: "maria", imessage_enabled: true };
+      else if (method === "POST" && path === "/api/v1/api-keys") value = { api_key: "test_scoped" };
+      else if (method === "GET" && path.endsWith("/signing-key")) value = { configured: true };
+      else if (method === "POST" && path === "/api/v1/webhooks/subscriptions") value = { id: "new_subscription" };
+      else throw new Error(`Unexpected request: ${method} ${path}`);
+      return new Response(JSON.stringify(value), { status: 200 });
+    } });
+    const result = provisionUser(input, {
+      ...d.deps, inkbox, reuseIdentities: true, inkboxAgentHandle: keyHandle, inkboxSigningKey: "test_signing",
+    });
+    if (keyHandle === "maria") {
+      const user = await result;
+      expect(user).toMatchObject({ status: "ready", handle: "maria", identityId: "existing_identity", signingKey: "test_signing" });
+      expect(d.store.get(user.id)?.signingKey).toBe("test_signing");
+      expect(JSON.stringify(d.mar.calls)).not.toContain("test_signing");
+    } else {
+      await expect(result).rejects.toThrow(/signing key already exists/);
+      expect(d.mar.calls).toHaveLength(0);
+    }
+    expect(calls).not.toContain("POST /api/v1/identities/maria/signing-key");
+    expect(calls).not.toContain("POST /api/v1/identities/");
+  });
+
   it("adopts an existing identity only when the operator opts in", async () => {
     const d = deps();
     const seen: Array<{ reuseExisting?: boolean }> = [];

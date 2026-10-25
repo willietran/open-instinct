@@ -23,8 +23,8 @@ export interface ConnectTarget {
  */
 export function withHandle(info: { connectCommand: string; smsLink: string }, handle: string): { command: string; smsLink: string } {
   return {
-    command: (info.connectCommand || `connect @${handle}`).replace(/@your-handle\b/g, `@${handle}`),
-    smsLink: info.smsLink.replace(/%40your-handle\b/gi, `%40${encodeURIComponent(handle)}`),
+    command: (info.connectCommand || `connect @${handle}`).replace(/@your-handle(?![a-z0-9-])/g, `@${handle}`),
+    smsLink: info.smsLink.replace(/%40your-handle(?![a-z0-9-])/gi, `%40${encodeURIComponent(handle)}`),
   };
 }
 

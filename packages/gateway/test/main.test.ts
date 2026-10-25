@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENT_IMAGE, agentExtraEnv, checkSignupPolicy, readEnv } from "../src/main.js";
 
 describe("readEnv", () => {
+  it("binds an imported signing key to the configured handle", () => {
+    const cfg = readEnv({ MARITIME_API_KEY: "mk", INKBOX_AGENT_HANDLE: " @Maria ", INKBOX_SIGNING_KEY: "test_signing" });
+    expect(cfg.inkboxAgentHandle).toBe("maria");
+    expect(cfg.inkboxSigningKey).toBe("test_signing");
+    expect(() => readEnv({ MARITIME_API_KEY: "mk", INKBOX_SIGNING_KEY: "test_signing" })).toThrow(/INKBOX_AGENT_HANDLE/);
+  });
+
   it("requires MARITIME_API_KEY and reads the signup, Composio, Maritime LLM and Link settings", () => {
     expect(() => readEnv({})).toThrow(/MARITIME_API_KEY/);
     const cfg = readEnv({
@@ -78,6 +85,12 @@ describe("Ample for every agent", () => {
 });
 
 describe("checkSignupPolicy", () => {
+  it("requires a private invite code when reusing identities, even with open signup enabled", () => {
+    const cfg = readEnv({ MARITIME_API_KEY: "mk", INKBOX_ADMIN_API_KEY: "ak", GATEWAY_REUSE_IDENTITIES: "1", GATEWAY_ALLOW_OPEN_SIGNUP: "1" });
+    expect(checkSignupPolicy(cfg)).toMatchObject({ ok: false, reason: expect.stringContaining("GATEWAY_SIGNUP_SECRET") });
+    expect(checkSignupPolicy({ ...cfg, signupSecret: "private-code" })).toEqual({ ok: true, open: false });
+  });
+
   it("refuses to start an open, billed signup form unless the operator opts in by name", () => {
     expect(checkSignupPolicy({ inkboxAdminApiKey: "ak", signupSecret: undefined, allowOpenSignup: false })).toMatchObject({ ok: false, reason: expect.stringContaining("GATEWAY_SIGNUP_SECRET") });
     expect(checkSignupPolicy({ inkboxAdminApiKey: "ak", signupSecret: "code", allowOpenSignup: false })).toEqual({ ok: true, open: false });

@@ -53,6 +53,9 @@ export interface ProvisionDeps {
   /** Public base URL of this gateway, used for the webhook subscription and OAuth redirects. */
   publicUrl: string;
   inkboxBaseUrl?: string;
+  /** Existing webhook key imported only for this handle when identity reuse is enabled. */
+  inkboxAgentHandle?: string;
+  inkboxSigningKey?: string;
   store: UserStore;
   anthropicApiKey?: string;
   /** OpenAI-compatible endpoint (Ollama, vLLM, a proxy) and the limits it was measured at. */
@@ -127,11 +130,13 @@ export function agentEnvFor(user: UserRecord, deps: AgentEnvDeps): EnvVarInput[]
   if (deps.inkboxBaseUrl) env.push({ key: "INKBOX_BASE_URL", value: deps.inkboxBaseUrl, isSecret: false });
   if (user.email) env.push({ key: "INSTINCT_OWNER_EMAIL", value: user.email, isSecret: false });
   if (deps.anthropicApiKey) env.push({ key: "ANTHROPIC_API_KEY", value: deps.anthropicApiKey, isSecret: true });
-  if (deps.openaiApiKey) env.push({ key: "OPENAI_API_KEY", value: deps.openaiApiKey, isSecret: true });
-  if (deps.openaiBaseUrl) env.push({ key: "OPENAI_BASE_URL", value: deps.openaiBaseUrl, isSecret: false });
-  if (deps.contextWindow) env.push({ key: "INSTINCT_CONTEXT_WINDOW", value: deps.contextWindow, isSecret: false });
-  if (deps.maxTokens) env.push({ key: "INSTINCT_MAX_TOKENS", value: deps.maxTokens, isSecret: false });
-  if (deps.model && !deps.maritime.useMaritimeLlm) env.push({ key: "INSTINCT_MODEL", value: deps.model, isSecret: false });
+  if (!deps.maritime.useMaritimeLlm) {
+    if (deps.openaiApiKey) env.push({ key: "OPENAI_API_KEY", value: deps.openaiApiKey, isSecret: true });
+    if (deps.openaiBaseUrl) env.push({ key: "OPENAI_BASE_URL", value: deps.openaiBaseUrl, isSecret: false });
+    if (deps.contextWindow) env.push({ key: "INSTINCT_CONTEXT_WINDOW", value: deps.contextWindow, isSecret: false });
+    if (deps.maxTokens) env.push({ key: "INSTINCT_MAX_TOKENS", value: deps.maxTokens, isSecret: false });
+    if (deps.model) env.push({ key: "INSTINCT_MODEL", value: deps.model, isSecret: false });
+  }
   if (deps.composioApiKey) {
     env.push({ key: "COMPOSIO_API_KEY", value: deps.composioApiKey, isSecret: true });
     // core only enables apps when COMPOSIO_TOOLKITS is non-empty; the key alone does nothing.
@@ -293,7 +298,9 @@ export async function provisionUser(input: ProvisionInput, deps: ProvisionDeps):
       log.info("provision.identity_key", { userId: user.id });
     }
     if (!user.signingKey) {
-      const key = await deps.inkbox.ensureSigningKey(user.handle);
+      const key = await deps.inkbox.ensureSigningKey(user.handle, {
+        knownSigningKey: deps.reuseIdentities && deps.inkboxAgentHandle === user.handle ? deps.inkboxSigningKey : undefined,
+      });
       user = store.save({ ...user, signingKey: key });
       log.info("provision.signing_key", { userId: user.id });
     }

@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ContactStore, StateDir, type InstinctConfig } from "@open-instinct/core";
 import type { ProvisionerLike } from "../src/inkbox-client.js";
+import { withHandle } from "../src/commands/connect.js";
 import { readSecrets } from "../src/secrets.js";
 import { readJson, run, tmpDir } from "./helpers.js";
 
@@ -41,6 +42,28 @@ function fakeProvisioner(opts: { takenHandles?: string[] } = {}) {
 }
 
 const initArgs = ["init", "--name", "Maria", "--phone", "+14155550100", "--handle", "maria-instinct"];
+
+describe("withHandle", () => {
+  it("fills the agent handle into Inkbox's template", () => {
+    expect(
+      withHandle({ connectCommand: "connect @your-handle", smsLink: "sms:+16504849720?&body=connect%20%40your-handle" }, "willie-instinct"),
+    ).toEqual({
+      command: "connect @willie-instinct",
+      smsLink: "sms:+16504849720?&body=connect%20%40willie-instinct",
+    });
+  });
+
+  it("keeps a command Inkbox already filled in", () => {
+    expect(withHandle({ connectCommand: "connect @maria", smsLink: "" }, "willie").command).toBe("connect @maria");
+  });
+
+  it.each(["connect @your-handle-prod", ""])("preserves a handle that starts with the placeholder (%s)", (connectCommand) => {
+    const smsLink = "sms:+16504849720?&body=connect%20%40your-handle-prod";
+    expect(withHandle({ connectCommand, smsLink }, "your-handle-prod")).toEqual({
+      command: "connect @your-handle-prod", smsLink,
+    });
+  });
+});
 
 describe("init with INKBOX_ADMIN_API_KEY", () => {
   it("provisions the identity with iMessage, mints keys, writes 0600 secrets and prints connect steps", async () => {

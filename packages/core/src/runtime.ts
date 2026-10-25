@@ -94,6 +94,29 @@ export interface HandleResult {
 export const SESSION_KEEP_MESSAGES = 60;
 /** Characters of kept transcript (JSON) before older turns are folded even if the count is under the limit. */
 export const SESSION_KEEP_CHARS = 240_000;
+/**
+ * A JSON transcript is about this many characters per token. Used only to turn a model's
+ * token window into a character budget.
+ */
+const CHARS_PER_TOKEN = 4;
+/** Share of the model's context window the transcript may fill; the prompt, tools and reply need the rest. */
+const TRANSCRIPT_WINDOW_SHARE = 0.5;
+/** Tokens of context per message kept verbatim. A long-window model keeps more history than a short one. */
+const TOKENS_PER_KEPT_MESSAGE = 4_000;
+
+/**
+ * How much history the fold keeps for a model. Both limits follow the declared context
+ * window, with the original constants as the floor so a small or unset window behaves as
+ * before.
+ */
+export function transcriptBudget(model: Pick<Model<any>, "contextWindow">): { keepMessages: number; keepChars: number } {
+  const window = Number.isFinite(model.contextWindow) && model.contextWindow > 0 ? model.contextWindow : 0;
+  return {
+    keepMessages: Math.max(SESSION_KEEP_MESSAGES, Math.floor(window / TOKENS_PER_KEPT_MESSAGE)),
+    keepChars: Math.max(SESSION_KEEP_CHARS, Math.round(window * CHARS_PER_TOKEN * TRANSCRIPT_WINDOW_SHARE)),
+  };
+}
+
 /** How many of the newest image-bearing tool results keep their pictures through a fold. */
 export const KEEP_RECENT_IMAGES = 2;
 /** An approved request can be acted on for this long before it lapses. */
@@ -200,7 +223,8 @@ export class Conversation {
     try {
       this.applySystemPrompt();
       // The transcript grows between restarts too, so the fold runs before every turn.
-      this.agent.state.messages = trimContext(this.agent.state.messages, this.now());
+      const budget = transcriptBudget(this.agent.state.model);
+      this.agent.state.messages = trimContext(this.agent.state.messages, this.now(), budget.keepMessages, budget.keepChars);
       const before = this.agent.state.messages.length;
       await this.agent.prompt(text, images);
       await this.agent.waitForIdle();
@@ -334,7 +358,8 @@ export class AgentRuntime {
   private createConversation(key: string, principal: Principal, opts: ConversationOpts, stored: AgentMessage[]): Conversation {
     const channel = channelOf(key);
     const sessionFile = join(this.sessionsDir, `${encodeURIComponent(key)}.jsonl`);
-    const restored = restoreMessages(stored, this.now());
+    const budget = transcriptBudget(this.deps.model);
+    const restored = restoreMessages(stored, this.now(), budget.keepMessages, budget.keepChars);
 
     // The Conversation needs the Agent and the Agent's hooks need the Conversation, so the
     // Agent is created with a placeholder tool list and tools are bound right after.
@@ -350,7 +375,7 @@ export class AgentRuntime {
       streamFn: this.deps.streamFn ?? (streamSimple as StreamFn),
       getApiKey: this.deps.getApiKey,
       toolExecution: "sequential",
-      transformContext: async (messages) => trimContext(messages, this.now()),
+      transformContext: async (messages) => trimContext(messages, this.now(), budget.keepMessages, budget.keepChars),
       beforeToolCall: async ({ toolCall, args }) => this.guard(conv, toolCall.name, args),
       afterToolCall: async ({ toolCall, args, isError, result }) => {
         this.recordToolCall(conv, toolCall.name, args, isError, result?.content);
@@ -1255,9 +1280,9 @@ export function writeSession(file: string, messages: AgentMessage[]): void {
 
 /**
  * Rebuild a context from stored messages: drop system messages (rebuilt per run), drop a
- * trailing tool call that never got its result, keep the last SESSION_KEEP_MESSAGES (and
- * no more than SESSION_KEEP_CHARS of JSON) and fold everything older into one plain-text
- * summary message. Idempotent on an already folded transcript.
+ * trailing tool call that never got its result, keep the last `keep` messages (default
+ * SESSION_KEEP_MESSAGES) and no more than `maxChars` of JSON, and fold everything older
+ * into one plain-text summary message. Idempotent on an already folded transcript.
  */
 export function restoreMessages(stored: AgentMessage[], now: Date, keep = SESSION_KEEP_MESSAGES, maxChars = SESSION_KEEP_CHARS, keepImages = KEEP_RECENT_IMAGES): AgentMessage[] {
   const messages = dropOldImages(dropOrphanToolCalls(stored.filter((m) => m.role !== "system")), keepImages);
@@ -1284,11 +1309,11 @@ export function restoreMessages(stored: AgentMessage[], now: Date, keep = SESSIO
 /**
  * The live context before a model call: the system message stays, the rest is folded like
  * a restore. The fold leaves room for the turn about to be added, so the transcript never
- * sits above SESSION_KEEP_MESSAGES + 2 (system message and summary) between turns.
+ * sits above `keep` + 2 (system message and summary) between turns.
  */
-export function trimContext(messages: AgentMessage[], now: Date): AgentMessage[] {
+export function trimContext(messages: AgentMessage[], now: Date, keep = SESSION_KEEP_MESSAGES, maxChars = SESSION_KEEP_CHARS): AgentMessage[] {
   const system = messages.filter((m) => m.role === "system");
-  const rest = restoreMessages(messages, now, SESSION_KEEP_MESSAGES - 2);
+  const rest = restoreMessages(messages, now, keep - 2, maxChars);
   return system.length ? [...system, ...rest] : rest;
 }
 

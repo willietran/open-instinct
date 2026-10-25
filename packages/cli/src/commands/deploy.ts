@@ -89,6 +89,8 @@ export function buildCreateBody(input: DeployInput): CreateAgentBody {
     // With the Maritime LLM, Maritime injects these itself; sending our own would shadow them.
     pushVar(vars, "OPENAI_API_KEY", env.OPENAI_API_KEY, true);
     pushVar(vars, "OPENAI_BASE_URL", env.OPENAI_BASE_URL, false);
+    pushVar(vars, "INSTINCT_CONTEXT_WINDOW", env.INSTINCT_CONTEXT_WINDOW, false);
+    pushVar(vars, "INSTINCT_MAX_TOKENS", env.INSTINCT_MAX_TOKENS, false);
   }
   pushVar(vars, "COMPOSIO_API_KEY", env.COMPOSIO_API_KEY, true);
   pushVar(vars, "COMPOSIO_TOOLKITS", env.COMPOSIO_TOOLKITS ?? (config.apps.toolkits.length ? config.apps.toolkits.join(",") : undefined), false);

@@ -16,9 +16,20 @@ export interface GatewayOptions {
   /** Without a provisioner the gateway only relays; signup is disabled. */
   inkbox?: InkboxProvisioner;
   inkboxBaseUrl?: string;
+  /** Existing webhook key imported only for this handle when identity reuse is enabled. */
+  inkboxAgentHandle?: string;
+  inkboxSigningKey?: string;
   maritime: MaritimeProvisionOptions;
   signupSecret?: string;
   anthropicApiKey?: string;
+  /** OpenAI-compatible model endpoint copied into every agent, with its declared limits. */
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  model?: string;
+  contextWindow?: string;
+  maxTokens?: string;
+  /** Adopt an identity that already holds the requested handle instead of creating a new one. */
+  reuseIdentities?: boolean;
   composioApiKey?: string;
   /** Comma-separated Composio toolkits sent with the key. Default gmail,googlecalendar,googlecontacts. */
   composioToolkits?: string;
@@ -132,6 +143,9 @@ function wantsJson(req: IncomingMessage): boolean {
 }
 
 export function createGateway(opts: GatewayOptions): GatewayServer {
+  if (opts.inkbox && opts.reuseIdentities && !opts.signupSecret) {
+    throw new Error("GATEWAY_REUSE_IDENTITIES requires GATEWAY_SIGNUP_SECRET. Keep the invite code private to the identity owner.");
+  }
   const log = opts.logger ?? consoleLogger;
   const now = opts.now ?? Date.now;
   const dedupe = new EventDeduper(5000);
@@ -200,10 +214,18 @@ export function createGateway(opts: GatewayOptions): GatewayServer {
     provisionUser(user, {
       inkbox: opts.inkbox,
       inkboxBaseUrl: opts.inkboxBaseUrl,
+      inkboxAgentHandle: opts.inkboxAgentHandle,
+      inkboxSigningKey: opts.inkboxSigningKey,
       maritime: opts.maritime,
       publicUrl: opts.publicUrl,
       store: opts.store,
       anthropicApiKey: opts.anthropicApiKey,
+      openaiApiKey: opts.openaiApiKey,
+      openaiBaseUrl: opts.openaiBaseUrl,
+      model: opts.model,
+      contextWindow: opts.contextWindow,
+      maxTokens: opts.maxTokens,
+      reuseIdentities: opts.reuseIdentities,
       composioApiKey: opts.composioApiKey,
       composioToolkits: opts.composioToolkits,
       link: opts.link,

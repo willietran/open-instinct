@@ -11,7 +11,7 @@ import { MemoryStore } from "../src/memory.js";
 import { PolicyEngine, defaultPolicy } from "../src/policy.js";
 import { coreTools } from "../src/core-tools.js";
 import { A2AStore } from "../src/a2a-state.js";
-import { AgentRuntime, InboundUncertainError, SESSION_KEEP_MESSAGES, hashArgs, restoreMessages, runtimeKey, stableJson, type Outbox, type RuntimeDeps } from "../src/runtime.js";
+import { AgentRuntime, InboundUncertainError, SESSION_KEEP_CHARS, SESSION_KEEP_MESSAGES, hashArgs, restoreMessages, runtimeKey, stableJson, transcriptBudget, type Outbox, type RuntimeDeps } from "../src/runtime.js";
 import { Scheduler } from "../src/scheduler.js";
 import { ToolRegistry, defineTool, textResult, type RegisteredTool } from "../src/tools.js";
 import type { InboundMessage, OutboundMessage, Policy, Principal } from "../src/types.js";
@@ -1572,6 +1572,26 @@ describe("restoreMessages", () => {
     const orphan: AgentMessage = { ...assistant(9), content: [{ type: "toolCall", id: "t1", name: "echo", arguments: {} }] } as AgentMessage;
     const restored = restoreMessages([user(1), assistant(1), user(2), orphan], new Date());
     expect(restored.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+  });
+});
+
+describe("transcriptBudget", () => {
+  it("keeps the original limits for a small window", () => {
+    const budget = transcriptBudget({ contextWindow: 128_000 });
+    expect(budget.keepMessages).toBe(SESSION_KEEP_MESSAGES);
+    expect(budget.keepChars).toBe(256_000);
+  });
+
+  it("scales both limits with a large window", () => {
+    const budget = transcriptBudget({ contextWindow: 1_000_000 });
+    expect(budget.keepMessages).toBe(250);
+    expect(budget.keepChars).toBe(2_000_000);
+  });
+
+  it("falls back to the original limits when the window is unset", () => {
+    const budget = transcriptBudget({ contextWindow: 0 });
+    expect(budget.keepMessages).toBe(SESSION_KEEP_MESSAGES);
+    expect(budget.keepChars).toBe(SESSION_KEEP_CHARS);
   });
 });
 

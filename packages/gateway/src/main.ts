@@ -3,6 +3,7 @@ import { consoleLogger } from "./logger.js";
 import type { LinkPassthrough } from "./provision.js";
 import { type GatewayServer, createGateway } from "./server.js";
 import { UserStore } from "./store.js";
+import { normalizeHandle } from "./validate.js";
 
 export const DEFAULT_AGENT_IMAGE = "ghcr.io/mariagorskikh/open-instinct-agent:latest";
 
@@ -12,6 +13,9 @@ export interface GatewayEnv {
   dataDir: string;
   inkboxAdminApiKey?: string;
   inkboxBaseUrl?: string;
+  /** Existing webhook key imported only for this handle when identity reuse is enabled. */
+  inkboxAgentHandle?: string;
+  inkboxSigningKey?: string;
   maritimeApiKey: string;
   maritimeBaseUrl?: string;
   agentImage: string;
@@ -21,6 +25,16 @@ export interface GatewayEnv {
   /** GATEWAY_TRUST_PROXY=1: rate-limit by X-Forwarded-For (Railway, Fly, a reverse proxy you run). */
   trustProxy: boolean;
   anthropicApiKey?: string;
+  /** An OpenAI-compatible endpoint (Ollama Cloud, vLLM, LiteLLM) for agents without an Anthropic key. */
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  /** Model spec every agent boots with. Ignored when the Maritime LLM is on. */
+  model?: string;
+  /** Declared context window and output cap, in tokens, for the OpenAI-compatible endpoint. */
+  contextWindow?: string;
+  maxTokens?: string;
+  /** GATEWAY_REUSE_IDENTITIES=1: adopt an existing identity that already holds the handle. Single owner only. */
+  reuseIdentities: boolean;
   composioApiKey?: string;
   composioToolkits?: string;
   /** COMPOSIO_MODE forwarded to each agent: direct or router. Unset lets the agent choose from its model. */
@@ -45,6 +59,9 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
   const port = Number(env["PORT"] ?? 8787);
   const maritimeApiKey = env["MARITIME_API_KEY"];
   if (!maritimeApiKey) throw new Error("MARITIME_API_KEY is required (the gateway forwards every message through Maritime).");
+  const inkboxAgentHandle = normalizeHandle(env["INKBOX_AGENT_HANDLE"] ?? "") || undefined;
+  const inkboxSigningKey = env["INKBOX_SIGNING_KEY"] || undefined;
+  if (inkboxSigningKey && !inkboxAgentHandle) throw new Error("Set INKBOX_AGENT_HANDLE with INKBOX_SIGNING_KEY to identify the imported identity.");
   const publicUrl = env["GATEWAY_PUBLIC_URL"] ?? `http://localhost:${port}`;
   const idle = env["INSTINCT_IDLE_TTL_SECONDS"] ? Number(env["INSTINCT_IDLE_TTL_SECONDS"]) : undefined;
   const linkClientId = env["LINK_CLIENT_ID"] || undefined;
@@ -61,6 +78,8 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
     dataDir: env["GATEWAY_DATA_DIR"] ?? "./.instinct-gateway",
     inkboxAdminApiKey: env["INKBOX_ADMIN_API_KEY"] || undefined,
     inkboxBaseUrl: env["INKBOX_BASE_URL"] || undefined,
+    inkboxAgentHandle,
+    inkboxSigningKey,
     maritimeApiKey,
     maritimeBaseUrl: env["MARITIME_API_URL"] || undefined,
     agentImage: env["INSTINCT_AGENT_IMAGE"] || DEFAULT_AGENT_IMAGE,
@@ -68,6 +87,12 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
     allowOpenSignup: truthy(env["GATEWAY_ALLOW_OPEN_SIGNUP"]) || truthy(env["GATEWAY_OPEN_SIGNUP"]),
     trustProxy: truthy(env["GATEWAY_TRUST_PROXY"]),
     anthropicApiKey: env["ANTHROPIC_API_KEY"] || undefined,
+    openaiApiKey: env["OPENAI_API_KEY"] || undefined,
+    openaiBaseUrl: env["OPENAI_BASE_URL"] || undefined,
+    model: env["INSTINCT_MODEL"] || undefined,
+    contextWindow: env["INSTINCT_CONTEXT_WINDOW"] || undefined,
+    maxTokens: env["INSTINCT_MAX_TOKENS"] || undefined,
+    reuseIdentities: truthy(env["GATEWAY_REUSE_IDENTITIES"]),
     composioApiKey: env["COMPOSIO_API_KEY"] || undefined,
     composioToolkits: env["COMPOSIO_TOOLKITS"] || env["INSTINCT_COMPOSIO_TOOLKITS"] || undefined,
     composioMode: env["COMPOSIO_MODE"]?.trim() || undefined,
@@ -86,9 +111,10 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
  * operator. With a provisioner configured the form is live, so it must be
  * behind an invite code unless the operator opts into open signup by name.
  */
-export function checkSignupPolicy(cfg: Pick<GatewayEnv, "inkboxAdminApiKey" | "signupSecret" | "allowOpenSignup">): { ok: true; open: boolean } | { ok: false; reason: string } {
+export function checkSignupPolicy(cfg: Pick<GatewayEnv, "inkboxAdminApiKey" | "signupSecret" | "allowOpenSignup"> & { reuseIdentities?: boolean }): { ok: true; open: boolean } | { ok: false; reason: string } {
   if (!cfg.inkboxAdminApiKey) return { ok: true, open: false };
   if (cfg.signupSecret) return { ok: true, open: false };
+  if (cfg.reuseIdentities) return { ok: false, reason: "GATEWAY_REUSE_IDENTITIES requires GATEWAY_SIGNUP_SECRET. Keep the invite code private to the identity owner." };
   if (cfg.allowOpenSignup) return { ok: true, open: true };
   return {
     ok: false,
@@ -134,6 +160,8 @@ export function startGateway(cfg: GatewayEnv): GatewayServer {
     publicUrl: cfg.publicUrl,
     inkbox,
     inkboxBaseUrl: cfg.inkboxBaseUrl,
+    inkboxAgentHandle: cfg.inkboxAgentHandle,
+    inkboxSigningKey: cfg.inkboxSigningKey,
     maritime: {
       apiKey: cfg.maritimeApiKey,
       baseUrl: cfg.maritimeBaseUrl,
@@ -145,6 +173,12 @@ export function startGateway(cfg: GatewayEnv): GatewayServer {
     },
     signupSecret: cfg.signupSecret,
     anthropicApiKey: cfg.anthropicApiKey,
+    openaiApiKey: cfg.openaiApiKey,
+    openaiBaseUrl: cfg.openaiBaseUrl,
+    model: cfg.model,
+    contextWindow: cfg.contextWindow,
+    maxTokens: cfg.maxTokens,
+    reuseIdentities: cfg.reuseIdentities,
     composioApiKey: cfg.composioApiKey,
     composioToolkits: cfg.composioToolkits,
     link: cfg.link,

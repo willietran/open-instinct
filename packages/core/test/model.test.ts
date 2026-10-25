@@ -29,6 +29,30 @@ describe("resolveModel", () => {
     expect(() => resolveModel("openai-compatible/x", {})).toThrow(/OPENAI_BASE_URL/);
   });
 
+  it("defaults an OpenAI-compatible model to a 128k window and 16k output", () => {
+    const m = resolveModel("openai-compatible/x", { OPENAI_BASE_URL: "https://ollama.com/v1" });
+    expect(m.contextWindow).toBe(128_000);
+    expect(m.maxTokens).toBe(16_384);
+  });
+
+  it("takes the context window and output cap from the operator", () => {
+    const m = resolveModel("openai-compatible/kimi-k3", {
+      OPENAI_BASE_URL: "https://ollama.com/v1",
+      OPENAI_API_KEY: "sk-secret",
+      INSTINCT_CONTEXT_WINDOW: "262144",
+      INSTINCT_MAX_TOKENS: "32768",
+    });
+    expect(m.contextWindow).toBe(262_144);
+    expect(m.maxTokens).toBe(32_768);
+  });
+
+  it("rejects a malformed window instead of booting with the default", () => {
+    const env = { OPENAI_BASE_URL: "https://ollama.com/v1" };
+    expect(() => resolveModel("openai-compatible/x", { ...env, INSTINCT_CONTEXT_WINDOW: "256k" })).toThrow(/INSTINCT_CONTEXT_WINDOW/);
+    expect(() => resolveModel("openai-compatible/x", { ...env, INSTINCT_CONTEXT_WINDOW: "0" })).toThrow(/INSTINCT_CONTEXT_WINDOW/);
+    expect(() => resolveModel("openai-compatible/x", { ...env, INSTINCT_MAX_TOKENS: "-1" })).toThrow(/INSTINCT_MAX_TOKENS/);
+  });
+
   it("explains bad specs with examples", () => {
     expect(() => resolveModel("claude-fable-5-1")).toThrow(/provider\/model-id/);
     expect(() => resolveModel("nope/model")).toThrow(/unknown provider "nope"/);

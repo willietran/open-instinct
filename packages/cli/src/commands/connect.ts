@@ -16,6 +16,18 @@ export interface ConnectTarget {
   handle: string;
 }
 
+/**
+ * Inkbox's triage-number reply carries the literal template "connect @your-handle"
+ * (and its percent-encoded form in the sms: link) for every org, so the agent's own
+ * handle has to be filled in here before a human reads it.
+ */
+export function withHandle(info: { connectCommand: string; smsLink: string }, handle: string): { command: string; smsLink: string } {
+  return {
+    command: (info.connectCommand || `connect @${handle}`).replace(/@your-handle(?![a-z0-9-])/g, `@${handle}`),
+    smsLink: info.smsLink.replace(/%40your-handle(?![a-z0-9-])/gi, `%40${encodeURIComponent(handle)}`),
+  };
+}
+
 /** Decodes a data: URL into bytes. Returns undefined when the URL is not base64 PNG. */
 export function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Buffer } | undefined {
   const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(dataUrl.trim());
@@ -38,13 +50,13 @@ export function resolveConnectTarget(ctx: CliContext): ConnectTarget {
 export async function printConnect(ctx: CliContext, target: ConnectTarget, qrFile?: string): Promise<void> {
   const provisioner = makeProvisioner(ctx.io, ctx.env, target.apiKey);
   const info = await provisioner.routerInfo();
+  const { command, smsLink } = withHandle(info, target.handle);
   const { c } = ctx;
-  const command = info.connectCommand || `connect @${target.handle}`;
   ctx.print();
   ctx.print(c.bold("Connect your iMessage"));
   ctx.print(`  1. Text ${c.cyan(command)} to ${c.cyan(info.number)}`);
   ctx.print(`  2. A new thread from your Instinct appears. Say hi.`);
-  if (info.smsLink) ctx.print(`  Tap-to-text link: ${info.smsLink}`);
+  if (smsLink) ctx.print(`  Tap-to-text link: ${smsLink}`);
   if (qrFile && info.qrPngDataUrl) {
     const decoded = decodeDataUrl(info.qrPngDataUrl);
     if (decoded) {

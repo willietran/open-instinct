@@ -64,6 +64,14 @@ function signup(base: string, body: Record<string, string>, headers: Record<stri
 }
 
 describe("gateway http", () => {
+  it("rejects identity reuse without an invite code when embedded", () => {
+    expect(() => createGateway({
+      store: new UserStore(tempDir()), publicUrl: "https://gw.example.com",
+      inkbox: fakeInkbox().provisioner, maritime: { apiKey: "mk_test", agentImage: "img:1" },
+      reuseIdentities: true,
+    })).toThrow(/GATEWAY_SIGNUP_SECRET/);
+  });
+
   it("serves health and the landing page", async () => {
     const { base } = await boot();
     const health = await fetch(`${base}/health`);

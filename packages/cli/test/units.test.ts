@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { extractDataDir } from "../src/args.js";
 import { table } from "../src/ansi.js";
 import { decodeDataUrl } from "../src/commands/connect.js";
-import { modelSpecFor } from "../src/commands/deploy.js";
+import { modelSpecFor, buildCreateBody } from "../src/commands/deploy.js";
 import { appsWarning } from "../src/commands/dev.js";
 import { applyInitFlags, parseInitFlags, splitToolkits } from "../src/commands/init.js";
 import { buildAuthorizeUrl } from "../src/commands/payments.js";
@@ -141,6 +141,36 @@ describe("modelSpecFor", () => {
     expect(modelSpecFor({ maritimeLlm: true, model: "openai-compatible/custom", config, env: {} })).toBe("openai-compatible/custom");
     expect(modelSpecFor({ config, env: {} })).toBe("anthropic/x");
     expect(modelSpecFor({ model: "anthropic/y", config, env: {} })).toBe("anthropic/y");
+  });
+});
+
+describe("buildCreateBody", () => {
+  it("omits the previous endpoint's limits when selecting the Maritime LLM", () => {
+    const body = buildCreateBody({
+      image: "ghcr.io/me/open-instinct-agent:latest", idleSeconds: 900, desktop: true, maritimeLlm: true,
+      config: { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } },
+      env: { OPENAI_API_KEY: "k", OPENAI_BASE_URL: "https://old-model.example/v1", INSTINCT_CONTEXT_WINDOW: "1048576", INSTINCT_MAX_TOKENS: "131072" },
+    });
+    const keys = body.initialEnvVars.map((v) => v.key);
+    expect(keys).not.toContain("OPENAI_API_KEY");
+    expect(keys).not.toContain("OPENAI_BASE_URL");
+    expect(keys).not.toContain("INSTINCT_CONTEXT_WINDOW");
+    expect(keys).not.toContain("INSTINCT_MAX_TOKENS");
+  });
+
+  it("carries the OpenAI-compatible endpoint and its declared limits into the VM", () => {
+    const config = { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } };
+    const body = buildCreateBody({
+      image: "ghcr.io/me/open-instinct-agent:latest",
+      idleSeconds: 900,
+      desktop: true,
+      config,
+      env: { OPENAI_API_KEY: "k", OPENAI_BASE_URL: "https://ollama.com/v1", INSTINCT_CONTEXT_WINDOW: "1048576", INSTINCT_MAX_TOKENS: "131072" },
+    });
+    const vars = Object.fromEntries(body.initialEnvVars.map((v) => [v.key, v.value]));
+    expect(vars.OPENAI_BASE_URL).toBe("https://ollama.com/v1");
+    expect(vars.INSTINCT_CONTEXT_WINDOW).toBe("1048576");
+    expect(vars.INSTINCT_MAX_TOKENS).toBe("131072");
   });
 });
 

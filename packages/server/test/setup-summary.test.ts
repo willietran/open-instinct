@@ -10,14 +10,17 @@ describe("setup summary", () => {
     expect(text).toContain("COMPOSIO_API_KEY");
     expect(text).toContain("Computer: none");
     expect(text).toContain("Payments: not set up");
+    expect(text).toContain("Voice notes: not set up");
+    expect(text).toContain("GROQ_API_KEY");
   });
   it("describes a fully wired agent", () => {
-    const text = setupSummaryFor({ inkbox: { handle: "maria-instinct" }, computerKind: "desktopd", apps: { connected: ["gmail"], anyApp: true, toolkits: [] }, wallet: { connected: true } });
+    const text = setupSummaryFor({ inkbox: { handle: "maria-instinct" }, computerKind: "desktopd", apps: { connected: ["gmail"], anyApp: true, toolkits: [] }, wallet: { connected: true }, voiceNotes: true });
     expect(text).toContain("@maria-instinct");
     expect(text).toContain("own Linux desktop");
     expect(text).toContain("any app by name");
     expect(text).toContain("Connected: gmail");
     expect(text).toContain("wallet connected");
+    expect(text).toContain("Voice notes: yes");
   });
   it("the stand-in apps_connect names the missing key instead of a screen", async () => {
     const tool = appsNotConfiguredTool();

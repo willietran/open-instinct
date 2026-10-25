@@ -205,6 +205,7 @@ export type AuditKind =
   | "outbound"
   | "tool_call"
   | "tool_result"
+  | "transcribe"
   | "policy"
   | "approval"
   | "spend"

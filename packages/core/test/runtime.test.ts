@@ -641,6 +641,52 @@ describe("AgentRuntime.handleInbound", () => {
     expect(prompt).toContain("url=https://files.example/x.pdf");
   });
 
+  it("transcribes a voice note before the model sees it and never passes the audio URL", async () => {
+    const seen: unknown[] = [];
+    const h = harness({
+      deps: {
+        transcribe: async (attachment) => {
+          seen.push(attachment);
+          return "Move my dentist appointment to Friday.";
+        },
+      },
+    });
+    h.faux.setResponses([textTurn("Done.")]);
+    const attachment = { url: "https://files.example/note.m4a", mimeType: "audio/x-m4a", name: "note.m4a" };
+    await h.runtime.handleInbound(inbound({ channel: "imessage", from: OWNER_PHONE, conversationKey: "imessage:voice", text: "", attachments: [attachment] }));
+
+    const conv = h.runtime.conversation("imessage:voice", { kind: "owner", id: "owner", tier: "owner", displayName: "Maria" });
+    const prompt = userTexts(conv.agent.state.messages)[0]!;
+    expect(prompt).toContain("[voice note, transcribed] Move my dentist appointment to Friday.");
+    expect(prompt).not.toContain("https://files.example/note.m4a");
+    expect(seen).toEqual([attachment]);
+    expect(h.deps.audit.read({ kinds: ["transcribe"] })).toHaveLength(1);
+  });
+
+  it("tells the model when a voice note cannot be transcribed", async () => {
+    const h = harness({ deps: { transcribe: async () => Promise.reject(new Error("provider timeout")) } });
+    h.faux.setResponses([textTurn("Please type it.")]);
+    await h.runtime.handleInbound(inbound({ channel: "imessage", from: OWNER_PHONE, conversationKey: "imessage:voice-fail", text: "", attachments: [{ url: "https://files.example/note.m4a", mimeType: "audio/x-m4a" }] }));
+
+    const conv = h.runtime.conversation("imessage:voice-fail", { kind: "owner", id: "owner", tier: "owner", displayName: "Maria" });
+    const prompt = userTexts(conv.agent.state.messages)[0]!;
+    expect(prompt).toContain("[voice note, not transcribed: provider timeout]");
+    expect(prompt).not.toContain("https://files.example/note.m4a");
+    expect(h.deps.audit.read({ kinds: ["transcribe"] })[0]?.detail).toMatchObject({ notes: 1, transcribed: 0, failed: 1 });
+  });
+
+  it("reports a voice note as unread when no transcription provider is wired", async () => {
+    const h = harness();
+    h.faux.setResponses([textTurn("I cannot hear voice notes yet.")]);
+    await h.runtime.handleInbound(inbound({ channel: "imessage", from: OWNER_PHONE, conversationKey: "imessage:voice-off", text: "", attachments: [{ url: "https://files.example/note.m4a", mimeType: "audio/x-m4a" }] }));
+
+    const conv = h.runtime.conversation("imessage:voice-off", { kind: "owner", id: "owner", tier: "owner", displayName: "Maria" });
+    const prompt = userTexts(conv.agent.state.messages)[0]!;
+    expect(prompt).toContain("transcription is not set up on this agent");
+    expect(prompt).not.toContain("https://files.example/note.m4a");
+    expect(h.deps.audit.read({ kinds: ["transcribe"] })[0]?.detail).toMatchObject({ notes: 1, transcribed: 0, failed: 1, reason: "not-configured" });
+  });
+
   it("puts the OIP data part in front of the model inside the untrusted block and wires promptExtra", async () => {
     const h = harness({
       deps: {

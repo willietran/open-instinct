@@ -124,6 +124,8 @@ the screen at checkout instead of paying.
 
 | Variable | What it unlocks | Where |
 |---|---|---|
+| `GROQ_API_KEY` | Voice notes on iMessage and SMS become text before the model sees them, with Groq Whisper Large v3. Also a Pi model provider key. This is the only key voice notes need | [console.groq.com/keys](https://console.groq.com/keys) |
+| `TRANSCRIBE_API_KEY`, `TRANSCRIBE_BASE_URL`, `TRANSCRIBE_MODEL` | Use another OpenAI-compatible transcription endpoint instead of Groq. Set all three, for example OpenAI: `sk-...`, `https://api.openai.com/v1`, `gpt-transcribe` | your provider |
 | `BRAVE_SEARCH_API_KEY` | Better web search than the DuckDuckGo fallback | [brave.com/search/api](https://brave.com/search/api/) |
 | `CONTEXT_DEV_API_KEY` | Sourced answers and public page research through `context_answers` | [context.dev](https://context.dev) |
 | `AMPLE_SIGNUP=1`, or `AMPLE_CLIENT_ID` and `AMPLE_CLIENT_SECRET` | Web apps the agent builds, deployed to public URLs through `ample_deploy`. `AMPLE_SIGNUP=1` needs no key: each agent signs up for its own account ([AMPLE.md](AMPLE.md)) | [ample.computer](https://ample.computer), `ample auth signup` |

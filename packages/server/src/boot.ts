@@ -20,6 +20,7 @@ import {
   StateDir,
   ToolRegistry,
   coreTools,
+  createTranscriber,
   ensurePersona,
   loadConfig,
   ownerClaimStatus,
@@ -118,6 +119,20 @@ export async function boot(env: NodeJS.ProcessEnv, opts: BootOptions = {}): Prom
 
   const model = opts.model ?? resolveModel(config.model.primary, env);
   const modelSpec = `${model.provider}/${model.id}`;
+
+  // Voice notes go to Groq Whisper by default: GROQ_API_KEY or a dedicated TRANSCRIBE_API_KEY.
+  // Another OpenAI-compatible provider needs all three TRANSCRIBE_* values. There is no
+  // OPENAI_* fallback, because those often point at a chat proxy that has no audio endpoint.
+  const transcribeKey = env.TRANSCRIBE_API_KEY?.trim() || env.GROQ_API_KEY?.trim();
+  const transcribe = transcribeKey
+    ? createTranscriber({
+        apiKey: transcribeKey,
+        ...(env.TRANSCRIBE_BASE_URL ? { baseUrl: env.TRANSCRIBE_BASE_URL } : {}),
+        ...(env.TRANSCRIBE_MODEL ? { model: env.TRANSCRIBE_MODEL } : {}),
+        ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
+      })
+    : undefined;
+  if (transcribe) log(`voice notes: ${env.TRANSCRIBE_MODEL ?? "whisper-large-v3"} through ${env.TRANSCRIBE_BASE_URL ?? "Groq"}`);
 
   const inkbox = inkboxSettings(env, config);
   const a2a = inkbox ? new InkboxA2A({
@@ -411,6 +426,7 @@ export async function boot(env: NodeJS.ProcessEnv, opts: BootOptions = {}): Prom
     model,
     outbox,
     a2aStore,
+    ...(transcribe ? { transcribe } : {}),
     ...(a2a ? { loadA2ATask: (taskId: string) => a2a.getTask(taskId) } : {}),
     skillsPrompt,
     streamFn: opts.streamFn ?? (streamSimple as StreamFn),
@@ -424,6 +440,7 @@ export async function boot(env: NodeJS.ProcessEnv, opts: BootOptions = {}): Prom
         computerKind: computer?.kind,
         apps: apps ? { connected: appsConnected ?? [], anyApp: apps.allToolkits, toolkits: apps.toolkitSlugs } : undefined,
         wallet: wallet ? { connected: wallet.isConnected() } : undefined,
+        voiceNotes: Boolean(transcribe),
       }),
     ...(env.INSTINCT_REPLY_BUDGET_MS ? { replyBudgetMs: Number(env.INSTINCT_REPLY_BUDGET_MS) } : {}),
   });

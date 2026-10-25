@@ -295,7 +295,7 @@ function auditTool({ audit }: CoreToolDeps): RegisteredTool {
     parameters: Type.Object({
       since: Type.Optional(Type.String({ description: "ISO timestamp; default is the last 24 hours" })),
       limit: Type.Optional(Type.Number({ description: "Max entries, default 50" })),
-      kinds: Type.Optional(Type.Array(Type.String({ description: "inbound, outbound, tool_call, policy, approval, spend, schedule, error" }))),
+      kinds: Type.Optional(Type.Array(Type.String({ description: "inbound, outbound, tool_call, transcribe, policy, approval, spend, schedule, error" }))),
     }),
     meta: { capabilities: ["trust.manage"], group: "owner" },
     execute: async ({ since, limit, kinds }, ctx) => {

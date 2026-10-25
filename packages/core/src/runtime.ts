@@ -29,6 +29,7 @@ import { A2AStore, a2aState, a2aTerminal } from "./a2a-state.js";
 import type { Scheduler } from "./scheduler.js";
 import type { StateDir } from "./state.js";
 import type { RegisteredTool, ToolContext, ToolRegistry } from "./tools.js";
+import { isVoiceNote, type VoiceNoteTranscriber } from "./transcribe.js";
 import {
   TIER_ORDER,
   type Approval,
@@ -78,6 +79,8 @@ export interface RuntimeDeps {
   promptExtra?: (principal: Principal, channel: Channel) => string[];
   /** "What is set up right now", read fresh for every prompt build. */
   setupSummary?: () => string | undefined;
+  /** Turns an inbound voice note into text before the model sees it. Without it the note is reported as unread. */
+  transcribe?: VoiceNoteTranscriber;
   a2aStore?: A2AStore;
   loadA2ATask?: (taskId: string) => Promise<unknown>;
 }
@@ -553,6 +556,8 @@ export class AgentRuntime {
       }
     }
 
+    // A stranger over the rate limit never reaches the transcription provider.
+    const voice = await this.transcribeVoiceNotes(msg, principal);
     let text = msg.text;
     let approvalNote: string | undefined;
     if (principal.kind === "owner" && !group && !msg.meta?.delegatedResult) {
@@ -571,7 +576,7 @@ export class AgentRuntime {
 
     // Everything the sender controls (text, attachment names, data parts) sits inside the
     // untrusted boundary when the sender is not the owner.
-    const body = withData(withAttachments(text, msg), msg, this.deps.describeData);
+    const body = withData(withAttachments(text, msg, voice), msg, this.deps.describeData);
     const prompt = principal.kind === "owner" && !msg.meta?.delegatedResult ? body : wrapUntrusted(body, untrustedLabel(msg, principal));
     const conv = this.conversation(routedKey ?? runtimeKey(msg, principal), principal, { deliveryKey: msg.conversationKey, replyRef: msg.replyRef });
     if (conv.channel === "a2a" && !this.a2aStore.active(conv.replyRef.taskId ?? "", conv.replyRef.messageId)) return { ...base, acked: true, blocked: "inactive-task" };
@@ -607,6 +612,38 @@ export class AgentRuntime {
       await this.deliver(conv, reply, { keepPrompt: approvals.promptedToken() !== promptedBefore, arrivedSeq: arrival.arrivedSeq, failure: !outcome.ok });
     }
     return { ...base, acked: true, reply: joinReply(reply) };
+  }
+
+  /**
+   * A voice note is transcribed before the model turn. A failure becomes a line the model
+   * can act on, never a silent attachment. The audio URL is dropped either way.
+   */
+  private async transcribeVoiceNotes(msg: InboundMessage, principal: Principal): Promise<Map<number, string>> {
+    const out = new Map<number, string>();
+    const notes = (msg.attachments ?? [])
+      .map((attachment, index) => ({ attachment, index }))
+      .filter(({ attachment }) => isVoiceNote(attachment));
+    if (notes.length === 0) return out;
+
+    if (!this.deps.transcribe) {
+      for (const { index } of notes) out.set(index, "[voice note, not transcribed: transcription is not set up on this agent]");
+      this.deps.audit.append({ kind: "transcribe", conversationKey: msg.conversationKey, principal: principal.id, detail: { notes: notes.length, transcribed: 0, failed: notes.length, reason: "not-configured" } });
+      return out;
+    }
+
+    let transcribed = 0;
+    let failed = 0;
+    for (const { attachment, index } of notes) {
+      try {
+        out.set(index, `[voice note, transcribed] ${oneLine(await this.deps.transcribe(attachment))}`);
+        transcribed++;
+      } catch (error) {
+        out.set(index, `[voice note, not transcribed: ${shortReason(error instanceof Error ? error.message : String(error))}]`);
+        failed++;
+      }
+    }
+    this.deps.audit.append({ kind: "transcribe", conversationKey: msg.conversationKey, principal: principal.id, detail: { notes: notes.length, transcribed, failed } });
+    return out;
   }
 
   /** Scheduled jobs run as the owner in their own conversation; results go to the owner's phone. */
@@ -1503,16 +1540,24 @@ function untrustedLabel(msg: InboundMessage, principal: Principal): string {
 }
 
 /** One line per attachment. Names, types and links are sender-controlled, so they are flattened to one line each. */
-function withAttachments(text: string, msg: InboundMessage): string {
+function withAttachments(text: string, msg: InboundMessage, voice: ReadonlyMap<number, string> = new Map()): string {
   if (!msg.attachments?.length) return text;
   const flat = (v: string | undefined, max: number) => (v ? clip(v.replace(/[\r\n\[\]]+/g, " ").trim(), max) : "");
-  const lines = msg.attachments.map((a) => {
+  const lines = msg.attachments.map((a, index) => {
+    const spoken = voice.get(index);
+    if (spoken !== undefined) return spoken;
     const name = flat(a.name, 200);
     const type = flat(a.mimeType, 80);
     const where = a.path ? ` path=${flat(a.path, 300)}` : a.url ? ` url=${a.url.replace(/[\r\n]+/g, "").trim()}` : "";
     return `[attachment${name ? ` ${name}` : ""}${type ? ` ${type}` : ""}${where}]`;
   });
   return `${text}\n${lines.join("\n")}`;
+}
+
+/** A spoken transcript is prose, so only whitespace is flattened. A long note is clipped. */
+function oneLine(text: string, max = 8_000): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  return t.length <= max ? t : `${t.slice(0, max - 3).trimEnd()}...`;
 }
 
 const DATA_PART_CAP = 6_000;

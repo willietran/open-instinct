@@ -150,8 +150,8 @@ Inbound iMessage from the owner, through the gateway:
    `POST https://api.maritime.sh/api/agents/{id}/chat` with
    `{ message: "@@instinct-event@@" + JSON(event), conversation_id: <inkbox conversation_id> }`.
    Maritime wakes the microVM (about 1 s) and delivers to the agent's `POST /chat`.
-3. The server unwraps the envelope, resolves the principal (owner), sends a typing
-   indicator, and prompts the owner conversation.
+3. The server unwraps the envelope, resolves the principal (owner), transcribes any
+   voice note, sends a typing indicator, and prompts the owner conversation.
 4. The agent works (tools, computer, apps). It replies through the Inkbox outbox on the same
    conversation. The `/chat` HTTP response is empty; the reply travels over iMessage.
 
@@ -316,6 +316,8 @@ Server:
 | `LINK_CLIENT_ID`, `LINK_CLIENT_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `LINK_REDIRECT_URI` | payments; all three keys together turn them on |
 | `BRAVE_SEARCH_API_KEY` | better `web_search` |
 | `IMAGE_API_KEY`, `IMAGE_BASE_URL`, `IMAGE_MODEL` | `image_generate`; defaults to `OPENAI_API_KEY` / `OPENAI_BASE_URL` and `gpt-image-1` |
+| `GROQ_API_KEY` | inbound voice notes become text before the model sees them, with Groq Whisper Large v3 at `https://api.groq.com/openai/v1` |
+| `TRANSCRIBE_API_KEY`, `TRANSCRIBE_BASE_URL`, `TRANSCRIBE_MODEL` | replace the Groq default with another OpenAI-compatible `/audio/transcriptions` endpoint; set all three |
 
 Gateway: `GATEWAY_PUBLIC_URL`, `GATEWAY_DATA_DIR`, `GATEWAY_SIGNUP_SECRET`, `GATEWAY_ALLOW_OPEN_SIGNUP`,
 `GATEWAY_TRUST_PROXY`, `INSTINCT_AGENT_IMAGE`, `INSTINCT_IDLE_TTL_SECONDS`, `INSTINCT_USE_MARITIME_LLM`,

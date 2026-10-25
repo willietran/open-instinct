@@ -92,6 +92,11 @@ export function buildCreateBody(input: DeployInput): CreateAgentBody {
     pushVar(vars, "INSTINCT_CONTEXT_WINDOW", env.INSTINCT_CONTEXT_WINDOW, false);
     pushVar(vars, "INSTINCT_MAX_TOKENS", env.INSTINCT_MAX_TOKENS, false);
   }
+  // Voice notes: Groq by default, or another OpenAI-compatible endpoint through TRANSCRIBE_*.
+  pushVar(vars, "GROQ_API_KEY", env.GROQ_API_KEY, true);
+  pushVar(vars, "TRANSCRIBE_API_KEY", env.TRANSCRIBE_API_KEY, true);
+  pushVar(vars, "TRANSCRIBE_BASE_URL", env.TRANSCRIBE_BASE_URL, false);
+  pushVar(vars, "TRANSCRIBE_MODEL", env.TRANSCRIBE_MODEL, false);
   pushVar(vars, "COMPOSIO_API_KEY", env.COMPOSIO_API_KEY, true);
   pushVar(vars, "COMPOSIO_TOOLKITS", env.COMPOSIO_TOOLKITS ?? (config.apps.toolkits.length ? config.apps.toolkits.join(",") : undefined), false);
   pushVar(vars, "COMPOSIO_MODE", env.COMPOSIO_MODE, false);

@@ -10,6 +10,8 @@ export interface SetupInput {
   computerKind?: string;
   apps?: { connected: string[]; anyApp: boolean; toolkits: string[] };
   wallet?: { connected: boolean };
+  /** A transcription provider is wired, so inbound voice notes reach the model as text. */
+  voiceNotes?: boolean;
 }
 
 export function setupSummaryFor(input: SetupInput): string {
@@ -18,6 +20,11 @@ export function setupSummaryFor(input: SetupInput): string {
     lines.push(`- Messaging: yes. You reach the owner by iMessage and email through Inkbox as @${input.inkbox.handle} (SMS too when the identity has a phone number). Files go out as attachments with send_file.`);
   } else {
     lines.push("- Messaging: no Inkbox identity on this agent. Replies only reach the dashboard or terminal chat; there is no iMessage, SMS or email yet. To enable: the person running this agent sets INKBOX_API_KEY and INKBOX_AGENT_HANDLE (see docs/KEYS.md).");
+  }
+  if (input.voiceNotes) {
+    lines.push("- Voice notes: yes. A voice note on iMessage or SMS reaches you as text, marked \"[voice note, transcribed]\". The audio is not stored.");
+  } else {
+    lines.push("- Voice notes: not set up. An audio attachment arrives as a file you cannot hear. Tell the owner in one line that GROQ_API_KEY or TRANSCRIBE_API_KEY is missing.");
   }
   if (input.computerKind === "desktopd") {
     lines.push("- Computer: yes, this agent's own Linux desktop (Chromium, LibreOffice). Logins, 2FA and payments on it go to the owner through request_takeover, which gives you a link to send.");

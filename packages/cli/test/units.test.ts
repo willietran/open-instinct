@@ -158,6 +158,19 @@ describe("buildCreateBody", () => {
     expect(keys).not.toContain("INSTINCT_MAX_TOKENS");
   });
 
+  it("carries the Groq key and transcription overrides into the VM", () => {
+    const body = buildCreateBody({
+      image: "ghcr.io/me/open-instinct-agent:latest",
+      idleSeconds: 900,
+      desktop: true,
+      config: { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } },
+      env: { GROQ_API_KEY: "gsk_test", TRANSCRIBE_MODEL: "whisper-large-v3" },
+    });
+    const vars = Object.fromEntries(body.initialEnvVars.map((v) => [v.key, v]));
+    expect(vars.GROQ_API_KEY).toMatchObject({ value: "gsk_test", isSecret: true });
+    expect(vars.TRANSCRIBE_MODEL).toMatchObject({ value: "whisper-large-v3", isSecret: false });
+  });
+
   it("carries the OpenAI-compatible endpoint and its declared limits into the VM", () => {
     const config = { ...defaultConfig(), agent: { name: "Instinct", handle: "maria-instinct" } };
     const body = buildCreateBody({

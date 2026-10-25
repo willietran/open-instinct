@@ -99,7 +99,7 @@ instinct deploy --image ghcr.io/<owner>/open-instinct-agent:latest
 instinct chat "hello" --agent agt_...
 ```
 
-What `deploy` sends: `framework: "custom"`, `exposedPort: 18789`, `healthCheckPath: "/health"`, `desktop: true`, `externalId: "open-instinct:<handle>"`, `idleTtlSeconds` (default 900), and the env vars the agent needs. `INKBOX_*` come from `secrets/inkbox.json`. `ANTHROPIC_API_KEY`, `COMPOSIO_*`, `BRAVE_SEARCH_API_KEY` and the `LINK_*` set come from your shell. Secrets are flagged `isSecret` so Maritime encrypts them. The agent id is saved to `<dataDir>/maritime.json`.
+What `deploy` sends: `framework: "custom"`, `exposedPort: 18789`, `healthCheckPath: "/health"`, `desktop: true`, `externalId: "open-instinct:<handle>"`, `idleTtlSeconds` (default 900), and the env vars the agent needs. `INKBOX_*` come from `secrets/inkbox.json`. `ANTHROPIC_API_KEY`, `OPENAI_*`, `COMPOSIO_*`, `BRAVE_SEARCH_API_KEY`, `GROQ_API_KEY`, the `TRANSCRIBE_*` set and the `LINK_*` set come from your shell. Secrets are flagged `isSecret` so Maritime encrypts them. The agent id is saved to `<dataDir>/maritime.json`.
 
 Flags you may want:
 
@@ -148,6 +148,7 @@ Any other host works the same way: run the gateway image, give it a persistent d
 | `INSTINCT_AGENT_IMAGE` | no | The image each new agent runs. Default `ghcr.io/mariagorskikh/open-instinct-agent:latest`. Point it at your own. |
 | `INSTINCT_IDLE_TTL_SECONDS` | no | Idle seconds before a VM sleeps. Default 900. |
 | `ANTHROPIC_API_KEY` | no | Copied into each new agent as a secret. |
+| `GROQ_API_KEY` | no | Copied into each new agent as a secret. Enables voice note transcription with Groq Whisper Large v3. |
 | `INSTINCT_USE_MARITIME_LLM` | no | `1` uses Maritime's metered proxy instead of your key. |
 | `INSTINCT_MARITIME_MODEL` | no | Model id behind the proxy. Default `gpt-5.4`. |
 | `COMPOSIO_API_KEY`, `COMPOSIO_TOOLKITS` | no | Apps for each new agent. |

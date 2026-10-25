@@ -18,5 +18,6 @@ export * from "./runtime.js";
 export * from "./a2a-state.js";
 export * from "./core-tools.js";
 export * from "./net-guard.js";
+export * from "./transcribe.js";
 export * from "./notifier.js";
 export * from "./pdf.js";

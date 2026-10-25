@@ -46,6 +46,9 @@ example `anthropic/claude-sonnet-5-5` for a cheaper agent, or any provider in Pi
 (`openai/gpt-...`, `google/gemini-...`, `groq/...`). Each provider reads its usual variable
 (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`). For an OpenAI-compatible proxy set
 `INSTINCT_MODEL=openai-compatible/<model>` plus `OPENAI_BASE_URL` and `OPENAI_API_KEY`.
+Declare the endpoint's limits with `INSTINCT_CONTEXT_WINDOW` and `INSTINCT_MAX_TOKENS`
+(tokens), or the agent assumes 128k context and 16k output. For Ollama Cloud, use
+`OPENAI_BASE_URL=https://ollama.com/v1` and a key from `ollama.com/settings/keys`.
 
 ## 3. Inkbox (iMessage, phone, email, agent-to-agent)
 

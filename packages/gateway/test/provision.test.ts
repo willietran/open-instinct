@@ -151,6 +151,35 @@ describe("provisionUser", () => {
     expect(custom.filter((e) => e.key === "INSTINCT_MODEL")).toEqual([{ key: "INSTINCT_MODEL", value: "openai-compatible/gpt-5.5", isSecret: false }]);
   });
 
+  it("forwards an OpenAI-compatible endpoint and the limits it was measured at", () => {
+    const env = agentEnvFor(readyUser(), {
+      openaiApiKey: "ollama-key",
+      openaiBaseUrl: "https://ollama.com/v1",
+      model: "openai-compatible/deepseek-v4.1-flash",
+      contextWindow: "1048576",
+      maxTokens: "131072",
+      maritime: { apiKey: "k", agentImage: "img" },
+    });
+    const byKey = Object.fromEntries(env.map((e) => [e.key, e]));
+    expect(byKey["OPENAI_API_KEY"]).toMatchObject({ isSecret: true });
+    expect(byKey["OPENAI_BASE_URL"]?.value).toBe("https://ollama.com/v1");
+    expect(byKey["INSTINCT_MODEL"]?.value).toBe("openai-compatible/deepseek-v4.1-flash");
+    expect(byKey["INSTINCT_CONTEXT_WINDOW"]?.value).toBe("1048576");
+    expect(byKey["INSTINCT_MAX_TOKENS"]?.value).toBe("131072");
+  });
+
+  it("adopts an existing identity only when the operator opts in", async () => {
+    const d = deps();
+    const seen: Array<{ reuseExisting?: boolean }> = [];
+    const original = d.ink.provisioner.provisionIdentity.bind(d.ink.provisioner);
+    d.ink.provisioner.provisionIdentity = async (i) => {
+      seen.push(i as { reuseExisting?: boolean });
+      return original(i);
+    };
+    await provisionUser(input, { ...d.deps, reuseIdentities: true });
+    expect(seen[0]?.reuseExisting).toBe(true);
+  });
+
   it("passes Link credentials through with a redirect URI on this gateway", () => {
     const env = agentEnvFor(readyUser({ id: "usr_l" }), {
       maritime: { apiKey: "k", agentImage: "img" },

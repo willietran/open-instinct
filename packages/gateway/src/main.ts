@@ -21,6 +21,16 @@ export interface GatewayEnv {
   /** GATEWAY_TRUST_PROXY=1: rate-limit by X-Forwarded-For (Railway, Fly, a reverse proxy you run). */
   trustProxy: boolean;
   anthropicApiKey?: string;
+  /** An OpenAI-compatible endpoint (Ollama Cloud, vLLM, LiteLLM) for agents without an Anthropic key. */
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  /** Model spec every agent boots with. Ignored when the Maritime LLM is on. */
+  model?: string;
+  /** Declared context window and output cap, in tokens, for the OpenAI-compatible endpoint. */
+  contextWindow?: string;
+  maxTokens?: string;
+  /** GATEWAY_REUSE_IDENTITIES=1: adopt an existing identity that already holds the handle. Single owner only. */
+  reuseIdentities: boolean;
   composioApiKey?: string;
   composioToolkits?: string;
   /** COMPOSIO_MODE forwarded to each agent: direct or router. Unset lets the agent choose from its model. */
@@ -68,6 +78,12 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
     allowOpenSignup: truthy(env["GATEWAY_ALLOW_OPEN_SIGNUP"]) || truthy(env["GATEWAY_OPEN_SIGNUP"]),
     trustProxy: truthy(env["GATEWAY_TRUST_PROXY"]),
     anthropicApiKey: env["ANTHROPIC_API_KEY"] || undefined,
+    openaiApiKey: env["OPENAI_API_KEY"] || undefined,
+    openaiBaseUrl: env["OPENAI_BASE_URL"] || undefined,
+    model: env["INSTINCT_MODEL"] || undefined,
+    contextWindow: env["INSTINCT_CONTEXT_WINDOW"] || undefined,
+    maxTokens: env["INSTINCT_MAX_TOKENS"] || undefined,
+    reuseIdentities: truthy(env["GATEWAY_REUSE_IDENTITIES"]),
     composioApiKey: env["COMPOSIO_API_KEY"] || undefined,
     composioToolkits: env["COMPOSIO_TOOLKITS"] || env["INSTINCT_COMPOSIO_TOOLKITS"] || undefined,
     composioMode: env["COMPOSIO_MODE"]?.trim() || undefined,
@@ -145,6 +161,12 @@ export function startGateway(cfg: GatewayEnv): GatewayServer {
     },
     signupSecret: cfg.signupSecret,
     anthropicApiKey: cfg.anthropicApiKey,
+    openaiApiKey: cfg.openaiApiKey,
+    openaiBaseUrl: cfg.openaiBaseUrl,
+    model: cfg.model,
+    contextWindow: cfg.contextWindow,
+    maxTokens: cfg.maxTokens,
+    reuseIdentities: cfg.reuseIdentities,
     composioApiKey: cfg.composioApiKey,
     composioToolkits: cfg.composioToolkits,
     link: cfg.link,

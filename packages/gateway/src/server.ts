@@ -19,6 +19,14 @@ export interface GatewayOptions {
   maritime: MaritimeProvisionOptions;
   signupSecret?: string;
   anthropicApiKey?: string;
+  /** OpenAI-compatible model endpoint copied into every agent, with its declared limits. */
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  model?: string;
+  contextWindow?: string;
+  maxTokens?: string;
+  /** Adopt an identity that already holds the requested handle instead of creating a new one. */
+  reuseIdentities?: boolean;
   composioApiKey?: string;
   /** Comma-separated Composio toolkits sent with the key. Default gmail,googlecalendar,googlecontacts. */
   composioToolkits?: string;
@@ -204,6 +212,12 @@ export function createGateway(opts: GatewayOptions): GatewayServer {
       publicUrl: opts.publicUrl,
       store: opts.store,
       anthropicApiKey: opts.anthropicApiKey,
+      openaiApiKey: opts.openaiApiKey,
+      openaiBaseUrl: opts.openaiBaseUrl,
+      model: opts.model,
+      contextWindow: opts.contextWindow,
+      maxTokens: opts.maxTokens,
+      reuseIdentities: opts.reuseIdentities,
       composioApiKey: opts.composioApiKey,
       composioToolkits: opts.composioToolkits,
       link: opts.link,

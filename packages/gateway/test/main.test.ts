@@ -17,6 +17,12 @@ describe("readEnv", () => {
       LINK_CLIENT_ID: "lc_1",
       LINK_CLIENT_SECRET: "ls_1",
       STRIPE_PUBLISHABLE_KEY: "pk_test_1",
+      OPENAI_API_KEY: "ollama-key",
+      OPENAI_BASE_URL: "https://ollama.com/v1",
+      INSTINCT_MODEL: "openai-compatible/deepseek-v4.1-flash",
+      INSTINCT_CONTEXT_WINDOW: "1048576",
+      INSTINCT_MAX_TOKENS: "131072",
+      GATEWAY_REUSE_IDENTITIES: "1",
     });
     expect(cfg.agentImage).toBe(DEFAULT_AGENT_IMAGE);
     expect(cfg.allowOpenSignup).toBe(true);
@@ -25,11 +31,17 @@ describe("readEnv", () => {
     expect(cfg.contextDevApiKey).toBe("ctxt_secret_test");
     expect(cfg.useMaritimeLlm).toBe(true);
     expect(cfg.maritimeModel).toBe("gpt-5.5");
+    expect(cfg.openaiBaseUrl).toBe("https://ollama.com/v1");
+    expect(cfg.model).toBe("openai-compatible/deepseek-v4.1-flash");
+    expect(cfg.contextWindow).toBe("1048576");
+    expect(cfg.maxTokens).toBe("131072");
+    expect(cfg.reuseIdentities).toBe(true);
     expect(cfg.link).toEqual({ clientId: "lc_1", clientSecret: "ls_1", stripePublishableKey: "pk_test_1" });
 
     const plain = readEnv({ MARITIME_API_KEY: "mk", LINK_CLIENT_SECRET: "orphan" });
     expect(plain.allowOpenSignup).toBe(false);
     expect(plain.useMaritimeLlm).toBe(false);
+    expect(plain.reuseIdentities).toBe(false);
     expect(plain.link).toBeUndefined();
   });
 });

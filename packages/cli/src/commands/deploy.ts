@@ -78,6 +78,8 @@ export function buildCreateBody(input: DeployInput): CreateAgentBody {
   pushVar(vars, "INSTINCT_OWNER_TIMEZONE", config.owner.timezone, false);
   pushVar(vars, "INSTINCT_AGENT_NAME", config.agent.name, false);
   pushVar(vars, "INSTINCT_MODEL", modelSpecFor(input), false);
+  pushVar(vars, "INSTINCT_CONTEXT_WINDOW", env.INSTINCT_CONTEXT_WINDOW, false);
+  pushVar(vars, "INSTINCT_MAX_TOKENS", env.INSTINCT_MAX_TOKENS, false);
   pushVar(vars, "INSTINCT_COMPUTER", input.desktop ? "auto" : "none", false);
   pushVar(vars, "INKBOX_AGENT_HANDLE", handle, false);
   pushVar(vars, "INKBOX_IDENTITY_ID", secrets?.identityId ?? env.INKBOX_IDENTITY_ID, false);

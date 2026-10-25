@@ -3,11 +3,20 @@
  * "openai-compatible/<model-id>" for any OpenAI-compatible endpoint (vLLM, Ollama,
  * LiteLLM, a proxy). This is the only place in core that looks at env, and only the
  * env object it is handed.
+ *
+ * The catalog carries contextWindow and maxTokens for every built-in model. An
+ * OpenAI-compatible endpoint has no catalog entry, so the operator declares them with
+ * INSTINCT_CONTEXT_WINDOW and INSTINCT_MAX_TOKENS; the runtime sizes its transcript
+ * fold from contextWindow.
  */
 import type { Model } from "@earendil-works/pi-ai";
 import { getBuiltinModel, getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
 
 export const OPENAI_COMPATIBLE_PROVIDER = "openai-compatible";
+
+/** What an OpenAI-compatible model is assumed to hold when the operator says nothing. */
+const DEFAULT_CONTEXT_WINDOW = 128_000;
+const DEFAULT_MAX_TOKENS = 16_384;
 
 const EXAMPLES = [
   "anthropic/claude-fable-5-1",
@@ -66,9 +75,19 @@ function openAiCompatibleModel(id: string, env: NodeJS.ProcessEnv): Model<"opena
     reasoning: false,
     input: ["text", "image"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 128_000,
-    maxTokens: 16_384,
+    contextWindow: positiveInt(env, "INSTINCT_CONTEXT_WINDOW", DEFAULT_CONTEXT_WINDOW),
+    maxTokens: positiveInt(env, "INSTINCT_MAX_TOKENS", DEFAULT_MAX_TOKENS),
   };
+}
+
+/** Token counts come from an operator-set env var; a typo must stop the boot, not shrink the window. */
+function positiveInt(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+  const raw = env[name]?.trim();
+  if (!raw) return fallback;
+  if (!/^\d+$/.test(raw) || Number(raw) <= 0) {
+    throw new Error(`${name} must be a positive integer (tokens), not "${raw}".`);
+  }
+  return Number(raw);
 }
 
 function unknownSpec(spec: string, why: string): string {

@@ -40,7 +40,11 @@ Validation: phone must normalize to E.164 (`+14155550123`; a bare 10-digit US nu
 | `GATEWAY_SIGNUP_SECRET` | yes when signup is on | Invite code. The form shows an "Invite code" field and `/api/signup` rejects requests without the exact value. With `INKBOX_ADMIN_API_KEY` set and no secret, the gateway refuses to start unless `GATEWAY_ALLOW_OPEN_SIGNUP=1` |
 | `GATEWAY_ALLOW_OPEN_SIGNUP` | no | `1` runs the signup form without an invite code, on purpose. Every signup bills your Maritime wallet and Inkbox plan, so the gateway logs a warning at boot and relies on the rate limits below |
 | `GATEWAY_TRUST_PROXY` | no | `1` counts signups by the first `X-Forwarded-For` address instead of the socket address. Set it behind Railway, Fly or a reverse proxy you run; never on a host reachable directly |
-| `ANTHROPIC_API_KEY` | no | Passed to every new agent as a secret env var so it can call the model. Other Pi provider keys can be passed the same way by extending `provisionUser` in your own fork |
+| `ANTHROPIC_API_KEY` | no | Passed to every new agent as a secret env var so it can call the model. |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | no | An OpenAI-compatible endpoint passed to every agent, for example Ollama Cloud. Pair it with `INSTINCT_MODEL`. |
+| `INSTINCT_MODEL` | no | The model spec each new agent boots with, such as `openai-compatible/deepseek-v4.1-flash`. Ignored when `INSTINCT_USE_MARITIME_LLM=1`. |
+| `INSTINCT_CONTEXT_WINDOW`, `INSTINCT_MAX_TOKENS` | no | Tokens. The context window and output cap for that endpoint. The agent sizes its transcript fold from the window. |
+| `GATEWAY_REUSE_IDENTITIES` | no | `1` adopts an Inkbox identity that already holds the requested handle instead of creating a new one, and mints a fresh key for it. Use it to move a laptop agent onto a VM without a new handle. Keep signup behind an invite code. |
 | `INSTINCT_USE_MARITIME_LLM` | no | `1` sets `useMaritimeLlm: true` on each agent so Maritime injects its metered `OPENAI_API_KEY` and `OPENAI_BASE_URL`, and sets `INSTINCT_MODEL=openai-compatible/<model>` so the agent uses them. For deployments without a model key of their own |
 | `INSTINCT_MARITIME_MODEL` | no | Model id behind the Maritime proxy. Default `gpt-5.4` |
 | `COMPOSIO_API_KEY` | no | Passed to every new agent as a secret env var; enables Gmail, Calendar and the other Composio toolkits |

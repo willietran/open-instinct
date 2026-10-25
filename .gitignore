@@ -10,3 +10,5 @@ dist/
 .DS_Store
 coverage/
 .pnpm-store/
+
+packages/evals/results/

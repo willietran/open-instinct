@@ -1,0 +1,25 @@
+{
+  "name": "@open-instinct/evals",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adversarial safety evals: prompt injection, secret exfiltration, impersonation, destructive actions, tier leakage, self-modification",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/run.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "eval": "node dist/run.js"
+  },
+  "dependencies": {
+    "@open-instinct/core": "workspace:*",
+    "@earendil-works/pi-ai": "^1.0.1",
+    "@earendil-works/pi-agent-core": "^1.0.1",
+    "typebox": "1.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}

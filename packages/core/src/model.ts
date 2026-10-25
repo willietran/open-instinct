@@ -72,7 +72,9 @@ function openAiCompatibleModel(id: string, env: NodeJS.ProcessEnv): Model<"opena
     api: "openai-completions",
     provider: OPENAI_COMPATIBLE_PROVIDER,
     baseUrl,
-    reasoning: false,
+    // Ollama, vLLM and LiteLLM all accept reasoning_effort for thinking models, and the
+    // model ignores an unsupported level. Claiming no reasoning here would drop the setting.
+    reasoning: true,
     input: ["text", "image"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: positiveInt(env, "INSTINCT_CONTEXT_WINDOW", DEFAULT_CONTEXT_WINDOW),

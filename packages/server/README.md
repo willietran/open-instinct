@@ -93,6 +93,7 @@ Only `server`, `gateway` and `cli` read `process.env`. Full list with comments:
 | `INSTINCT_DATA_DIR` | state root; default `/data` if it exists, else `./.instinct` |
 | `INSTINCT_MODEL` | `provider/model`; default `anthropic/claude-fable-5-1`; `openai-compatible/<id>` uses `OPENAI_BASE_URL` |
 | `INSTINCT_CONTEXT_WINDOW`, `INSTINCT_MAX_TOKENS` | context and output limits in tokens for an `openai-compatible` model; default 128000 and 16384; the transcript fold follows the context window |
+| `INSTINCT_THINKING` | reasoning level for thinking models: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`; overrides `config.json` `model.thinking` on every load |
 | `INSTINCT_OWNER_NAME/PHONE/EMAIL/TIMEZONE`, `INSTINCT_AGENT_NAME` | seed `config.json` on first boot |
 | `INKBOX_API_KEY` + `INKBOX_AGENT_HANDLE` (+ `INKBOX_IDENTITY_ID`) | outbox becomes Inkbox; messaging tools and A2A appear |
 | `INKBOX_SIGNING_KEY` | webhook verification (also read from `<data>/secrets/webhook.json`) |

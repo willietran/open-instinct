@@ -28,6 +28,8 @@ export interface GatewayOptions {
   model?: string;
   contextWindow?: string;
   maxTokens?: string;
+  /** Reasoning level copied into every agent. See INSTINCT_THINKING. */
+  thinking?: string;
   /** Adopt an identity that already holds the requested handle instead of creating a new one. */
   reuseIdentities?: boolean;
   composioApiKey?: string;
@@ -225,6 +227,7 @@ export function createGateway(opts: GatewayOptions): GatewayServer {
       model: opts.model,
       contextWindow: opts.contextWindow,
       maxTokens: opts.maxTokens,
+      thinking: opts.thinking,
       reuseIdentities: opts.reuseIdentities,
       composioApiKey: opts.composioApiKey,
       composioToolkits: opts.composioToolkits,

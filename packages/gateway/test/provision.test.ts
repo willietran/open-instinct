@@ -158,6 +158,7 @@ describe("provisionUser", () => {
       model: "openai-compatible/deepseek-v4.1-flash",
       contextWindow: "1048576",
       maxTokens: "131072",
+      thinking: "max",
       maritime: { apiKey: "k", agentImage: "img" },
     });
     const byKey = Object.fromEntries(env.map((e) => [e.key, e]));
@@ -166,12 +167,13 @@ describe("provisionUser", () => {
     expect(byKey["INSTINCT_MODEL"]?.value).toBe("openai-compatible/deepseek-v4.1-flash");
     expect(byKey["INSTINCT_CONTEXT_WINDOW"]?.value).toBe("1048576");
     expect(byKey["INSTINCT_MAX_TOKENS"]?.value).toBe("131072");
+    expect(byKey["INSTINCT_THINKING"]?.value).toBe("max");
   });
 
   it("omits a previous model endpoint and its limits when selecting the Maritime LLM", () => {
     const env = agentEnvFor(readyUser(), {
       openaiApiKey: "test_key", openaiBaseUrl: "https://old-model.example/v1",
-      model: "openai-compatible/old-model", contextWindow: "1048576", maxTokens: "131072",
+      model: "openai-compatible/old-model", contextWindow: "1048576", maxTokens: "131072", thinking: "max",
       maritime: { apiKey: "k", agentImage: "img", useMaritimeLlm: true },
     });
     const keys = env.map((e) => e.key);
@@ -179,6 +181,7 @@ describe("provisionUser", () => {
     expect(keys).not.toContain("OPENAI_BASE_URL");
     expect(keys).not.toContain("INSTINCT_CONTEXT_WINDOW");
     expect(keys).not.toContain("INSTINCT_MAX_TOKENS");
+    expect(keys).not.toContain("INSTINCT_THINKING");
     expect(env.find((e) => e.key === "INSTINCT_MODEL")?.value).toBe(`openai-compatible/${DEFAULT_MARITIME_LLM_MODEL}`);
   });
 

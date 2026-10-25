@@ -249,7 +249,7 @@ export interface InstinctConfig {
   version: 1;
   owner: OwnerProfile;
   agent: { name: string; handle?: string; persona?: string; /** Inkbox Voice AI voice id for phone calls. INKBOX_VOICE overrides it. */ voice?: string };
-  model: { primary: string; fallback?: string; cheap?: string; thinking?: "off" | "minimal" | "low" | "medium" | "high" };
+  model: { primary: string; fallback?: string; cheap?: string; thinking?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" };
   computer: { mode: "auto" | "desktopd" | "maritime" | "none"; desktopdUrl?: string; maritimeMcpUrl?: string };
   apps: { enabled: boolean; toolkits: string[] };
   features: {

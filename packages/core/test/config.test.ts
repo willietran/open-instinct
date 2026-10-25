@@ -60,6 +60,14 @@ describe("config", () => {
     expect(state.readJson<{ model: { primary: string } }>("config.json", { model: { primary: "" } }).model.primary).toBe(DEFAULT_MODEL);
   });
 
+  it("takes the reasoning level from INSTINCT_THINKING, including max", () => {
+    expect(loadConfig(tempState(), { INSTINCT_THINKING: "max" }).model.thinking).toBe("max");
+    const state = tempState();
+    loadConfig(state, { INSTINCT_THINKING: "low" });
+    expect(loadConfig(state, { INSTINCT_THINKING: "MAX" }).model.thinking).toBe("max");
+    expect(() => loadConfig(tempState(), { INSTINCT_THINKING: "highest" })).toThrow(/INSTINCT_THINKING/);
+  });
+
   it("seeds owner.claimOnFirstContact from INSTINCT_CLAIM_OWNER_ON_FIRST_CONTACT only when set", () => {
     const off = loadConfig(tempState(), { INSTINCT_OWNER_NAME: "Maria" });
     expect(off.owner.claimOnFirstContact).toBeUndefined();

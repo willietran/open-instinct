@@ -44,6 +44,23 @@ function splitList(value: string | undefined): string[] {
 
 const COMPUTER_MODES = new Set<InstinctConfig["computer"]["mode"]>(["auto", "desktopd", "maritime", "none"]);
 
+const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+type ThinkingLevel = NonNullable<InstinctConfig["model"]["thinking"]>;
+
+/**
+ * INSTINCT_THINKING swaps the reasoning level without editing state, the same way
+ * INSTINCT_MODEL swaps the model. A typo stops the boot instead of silently reverting
+ * to the file.
+ */
+function thinkingFromEnv(env: NodeJS.ProcessEnv): ThinkingLevel | undefined {
+  const raw = env.INSTINCT_THINKING?.trim().toLowerCase();
+  if (!raw) return undefined;
+  if (!(THINKING_LEVELS as readonly string[]).includes(raw)) {
+    throw new Error(`INSTINCT_THINKING must be one of ${THINKING_LEVELS.join(", ")}, not "${raw}".`);
+  }
+  return raw as ThinkingLevel;
+}
+
 /** Build a fresh config from the environment. Used only when config.json is missing. */
 export function configFromEnv(env: NodeJS.ProcessEnv): InstinctConfig {
   const cfg = defaultConfig();
@@ -59,6 +76,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv): InstinctConfig {
   if (timezone) cfg.owner.timezone = timezone;
   if (/^(1|true|yes)$/i.test((env.INSTINCT_ACK_SLOW_REPLIES ?? "").trim())) cfg.features.ackSlowReplies = true;
   if (env.INSTINCT_MODEL?.trim()) cfg.model.primary = env.INSTINCT_MODEL.trim();
+  const thinking = thinkingFromEnv(env);
+  if (thinking) cfg.model.thinking = thinking;
   if (env.INSTINCT_AGENT_NAME?.trim()) cfg.agent.name = env.INSTINCT_AGENT_NAME.trim();
   if (env.INKBOX_AGENT_HANDLE?.trim()) cfg.agent.handle = normalizeHandle(env.INKBOX_AGENT_HANDLE);
   const mode = env.INSTINCT_COMPUTER?.trim() as InstinctConfig["computer"]["mode"] | undefined;
@@ -98,6 +117,8 @@ export function loadConfig(state: StateDir, env: NodeJS.ProcessEnv): InstinctCon
   }
   const cfg = withDefaults(state.readJson<Partial<InstinctConfig>>(FILE, {}));
   if (env.INSTINCT_MODEL?.trim()) cfg.model.primary = env.INSTINCT_MODEL.trim();
+  const thinking = thinkingFromEnv(env);
+  if (thinking) cfg.model.thinking = thinking;
   return cfg;
 }
 

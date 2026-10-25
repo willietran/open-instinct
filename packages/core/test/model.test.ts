@@ -22,6 +22,7 @@ describe("resolveModel", () => {
     expect(m.id).toBe("llama-3.3-70b");
     expect(m.api).toBe("openai-completions");
     expect(m.baseUrl).toBe("http://localhost:11434/v1");
+    expect(m.reasoning).toBe(true);
     expect(JSON.stringify(m)).not.toContain("sk-secret");
   });
 

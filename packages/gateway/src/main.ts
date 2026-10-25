@@ -33,6 +33,8 @@ export interface GatewayEnv {
   /** Declared context window and output cap, in tokens, for the OpenAI-compatible endpoint. */
   contextWindow?: string;
   maxTokens?: string;
+  /** Reasoning level for agents: off, minimal, low, medium, high, xhigh, max. */
+  thinking?: string;
   /** GATEWAY_REUSE_IDENTITIES=1: adopt an existing identity that already holds the handle. Single owner only. */
   reuseIdentities: boolean;
   composioApiKey?: string;
@@ -92,6 +94,7 @@ export function readEnv(env: NodeJS.ProcessEnv): GatewayEnv {
     model: env["INSTINCT_MODEL"] || undefined,
     contextWindow: env["INSTINCT_CONTEXT_WINDOW"] || undefined,
     maxTokens: env["INSTINCT_MAX_TOKENS"] || undefined,
+    thinking: env["INSTINCT_THINKING"] || undefined,
     reuseIdentities: truthy(env["GATEWAY_REUSE_IDENTITIES"]),
     composioApiKey: env["COMPOSIO_API_KEY"] || undefined,
     composioToolkits: env["COMPOSIO_TOOLKITS"] || env["INSTINCT_COMPOSIO_TOOLKITS"] || undefined,
@@ -178,6 +181,7 @@ export function startGateway(cfg: GatewayEnv): GatewayServer {
     model: cfg.model,
     contextWindow: cfg.contextWindow,
     maxTokens: cfg.maxTokens,
+    thinking: cfg.thinking,
     reuseIdentities: cfg.reuseIdentities,
     composioApiKey: cfg.composioApiKey,
     composioToolkits: cfg.composioToolkits,

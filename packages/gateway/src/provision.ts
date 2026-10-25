@@ -65,6 +65,8 @@ export interface ProvisionDeps {
   model?: string;
   contextWindow?: string;
   maxTokens?: string;
+  /** Reasoning level for the agent. */
+  thinking?: string;
   /** Adopt an identity that already holds the requested handle. Single-owner setups only. */
   reuseIdentities?: boolean;
   composioApiKey?: string;
@@ -78,7 +80,7 @@ export interface ProvisionDeps {
 }
 
 /** What agentEnvFor and maritimeCreateBody need from the deps. */
-export type AgentEnvDeps = Pick<ProvisionDeps, "anthropicApiKey" | "openaiApiKey" | "openaiBaseUrl" | "model" | "contextWindow" | "maxTokens" | "composioApiKey" | "composioToolkits" | "maritime" | "link" | "inkboxBaseUrl"> & {
+export type AgentEnvDeps = Pick<ProvisionDeps, "anthropicApiKey" | "openaiApiKey" | "openaiBaseUrl" | "model" | "contextWindow" | "maxTokens" | "thinking" | "composioApiKey" | "composioToolkits" | "maritime" | "link" | "inkboxBaseUrl"> & {
   publicUrl?: string;
 };
 
@@ -135,6 +137,7 @@ export function agentEnvFor(user: UserRecord, deps: AgentEnvDeps): EnvVarInput[]
     if (deps.openaiBaseUrl) env.push({ key: "OPENAI_BASE_URL", value: deps.openaiBaseUrl, isSecret: false });
     if (deps.contextWindow) env.push({ key: "INSTINCT_CONTEXT_WINDOW", value: deps.contextWindow, isSecret: false });
     if (deps.maxTokens) env.push({ key: "INSTINCT_MAX_TOKENS", value: deps.maxTokens, isSecret: false });
+  if (deps.thinking) env.push({ key: "INSTINCT_THINKING", value: deps.thinking, isSecret: false });
     if (deps.model) env.push({ key: "INSTINCT_MODEL", value: deps.model, isSecret: false });
   }
   if (deps.composioApiKey) {

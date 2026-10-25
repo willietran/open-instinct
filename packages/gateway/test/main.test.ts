@@ -29,6 +29,7 @@ describe("readEnv", () => {
       INSTINCT_MODEL: "openai-compatible/deepseek-v4.1-flash",
       INSTINCT_CONTEXT_WINDOW: "1048576",
       INSTINCT_MAX_TOKENS: "131072",
+      INSTINCT_THINKING: "max",
       GATEWAY_REUSE_IDENTITIES: "1",
     });
     expect(cfg.agentImage).toBe(DEFAULT_AGENT_IMAGE);
@@ -42,6 +43,7 @@ describe("readEnv", () => {
     expect(cfg.model).toBe("openai-compatible/deepseek-v4.1-flash");
     expect(cfg.contextWindow).toBe("1048576");
     expect(cfg.maxTokens).toBe("131072");
+    expect(cfg.thinking).toBe("max");
     expect(cfg.reuseIdentities).toBe(true);
     expect(cfg.link).toEqual({ clientId: "lc_1", clientSecret: "ls_1", stripePublishableKey: "pk_test_1" });
 
